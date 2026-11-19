@@ -1,0 +1,15 @@
+{
+  "_note": "20 realistic questions about a company brain, English and German, in 10 translated pairs across five themes. Used by evaluate.py to measure how well the small local model finds the same documents in both languages. Replace them with questions your own company asks.",
+  "pairs": [
+    {"theme": "invoices", "en": "Which client invoices are still open and unpaid?", "de": "Welche Kundenrechnungen sind noch offen und unbezahlt?"},
+    {"theme": "invoices", "en": "Invoice amounts and due dates per legal entity", "de": "Rechnungsbeträge und Fälligkeiten je Gesellschaft"},
+    {"theme": "tax registration", "en": "Tax registration certificate and tax number of the company", "de": "Steuerliche Registrierung und Steuernummer der Gesellschaft"},
+    {"theme": "tax registration", "en": "VAT ID and correspondence with the tax office", "de": "USt-IdNr. und Schriftverkehr mit dem Finanzamt"},
+    {"theme": "client meeting", "en": "What was agreed in the client meeting about the timeline and deliverables?", "de": "Was wurde im Kundentermin zu Zeitplan und Lieferumfang vereinbart?"},
+    {"theme": "client meeting", "en": "Action items and open questions from the last sales call with the prospect", "de": "Offene Punkte und nächste Schritte aus dem letzten Verkaufsgespräch mit dem Interessenten"},
+    {"theme": "data-processing agreement", "en": "Data processing agreement: subprocessors, EU data boundary and deletion at the end", "de": "Auftragsverarbeitungsvertrag: Unterauftragnehmer, EU-Datengrenze und Löschung nach Vertragsende"},
+    {"theme": "data-processing agreement", "en": "Which client has signed the DPA and which version was sent?", "de": "Welcher Kunde hat den AV-Vertrag unterschrieben und welche Version wurde verschickt?"},
+    {"theme": "bank statement", "en": "Bank statement with the account balance and card fees charged", "de": "Kontoauszug mit Kontostand und berechneten Kartengebühren"},
+    {"theme": "bank statement", "en": "Incoming payments from customers on the business account this month", "de": "Eingehende Zahlungen von Kunden auf dem Geschäftskonto in diesem Monat"}
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "_note": "The single place that decides what leaves this computer for the shared store. Read by tools/index/supabase_sync.py. Order: (1) the never list blocks a path outright; (2) the first matching rule gives scope and module; (3) area_rules are the fallback by the index's area column; (4) anything still unmatched stays local. A rule with scope null keeps that path local. Paths are relative to the brain's root, prefixes are case-sensitive, never-list name patterns are case-insensitive.",
+  "version": 1,
+  "owner_confirmed_private_scopes": false,
+  "_owner_confirmed_private_scopes_note": "Set this to true only after the owner has answered, in writing, the question 'who can open the store's project in the provider's dashboard?' with 'only me'. While false, supabase_sync.py refuses to upload the scopes listed in private_scopes, whatever the command line says. Set it back to false the day anyone else gets dashboard or organisation access.",
+  "private_scopes": ["finance", "ops", "client:*"],
+  "client_scopes_allowed": [],
+  "_client_scopes_allowed_note": "Even with the flag true, a client:<slug> scope is uploaded only if its slug is listed here: the owner says yes per client. A client under a confidentiality agreement or with special-category data is never listed.",
+  "known_scopes": ["finance", "ops", "gtm", "outreach", "templates", "design", "client:*"],
+  "never": {
+    "_note": "Blocks a path from every upload: no document row, no chunk, no record, no edge. Checked before any rule.",
+    "path_prefixes": [
+      "00_Brain/INBOX/",
+      ".claude/", ".cursor/", ".agents/", ".codex/", ".git/", ".index/",
+      "_backups/",
+      "examples/",
+      {"prefix": "Repos/", "unless_ext": [".md", ".mdx", ".txt", ".rst"], "_note": "linked repositories: documentation only"}
+    ],
+    "path_contains": ["_secrets/", "credentials/"],
+    "_path_contains_note": "Case-insensitive substring of the whole path. Add the folder of any prospect or client whose material is under a confidentiality agreement.",
+    "path_segments": ["personal", "private", "_archive", "identity"],
+    "_path_segments_note": "A folder anywhere in the path whose name equals one of these (case-insensitive).",
+    "name_patterns": [
+      "*passport*", "*reisepass*", "*visa*", "*id*card*", "*residence*", "*residency*", "*permit*",
+      "*aufenthalt*", "*ausweis*", "*medical*", "*medizin*", "*health*insurance*", "*health*card*",
+      "*krankenversicherung*", "*credential*", "*recovery*code*", "*recoverycode*", "*backup*code*",
+      "*secret*", "*accesskey*", "*access_key*", "*access*code*", "*zugangscode*", "*aktivierungscode*",
+      "*activation*code*", "*verification*code*", "*legitimation*", "*keystore*", "*.pfx", "*.p12",
+      "*.pem", "*.key", "*.jks", "*.keystore", "*.kdbx", "*.ovpn", ".env", ".env.*", "*.env",
+      ".mcp.json", "mcp.json", "*id_rsa*", "*id_ed25519*", "*export*", "*dump*"
+    ],
+    "prefix_name_patterns": [],
+    "_prefix_name_patterns_note": "One entry per guarded client folder, e.g. {\"prefix\": \"01_Clients/<slug>/\", \"name_contains\": [\"health\", \"medical\", \"patient\", \"pseudonym\"]}: inside that folder a file whose name contains any of the words never goes up.",
+    "_name_patterns_note": "Case-insensitive glob on the file name. No file bytes ever go up; this list also keeps the names and digests of such files out."
+  },
+  "never_text_terms": [],
+  "_never_text_terms_note": "A chunk or record whose text contains one of these terms (case-insensitive) is dropped, not redacted. Use it for the name of a party whose material is under a confidentiality agreement.",
+  "content": {
+    "_note": "No file bytes go up, only meaningful data. Every file gets a metadata-only document row; chunk text comes only from text files (notes, registers, digests, mail renditions). A PDF, Office file, image or scan has no chunks of its own: its text travels as its sibling <name>.digest.md document. Raw extracted renditions (<name>.pdf.txt and the like) carry no chunks.",
+    "chunk_text_extensions": [".md", ".txt", ".eml", ".vtt", ".csv", ".json", ".html"],
+    "rendition_patterns": ["*.pdf.txt", "*.doc.txt", "*.docx.txt", "*.xls.txt", "*.xlsx.txt", "*.ppt.txt", "*.pptx.txt", "*.jpg.txt", "*.jpeg.txt", "*.png.txt", "*.heic.txt", "*.pdf.md", "*.docx.md", "*.xlsx.md"]
+  },
+  "rules": [
+    {"prefix": "04_Marketing/Brand/", "scope": "design", "module": "brand"},
+    {"prefix": "04_Marketing/BASE/", "scope": "gtm", "module": "marketing"},
+    {"prefix": "04_Marketing/", "scope": "gtm", "module": "marketing"},
+    {"prefix": "03_Sales/Templates/", "scope": "templates", "module": "sales"},
+    {"prefix": "03_Sales/", "scope": null, "_note": "leads, offers and their values stay local; give this a scope only when the team should search them"},
+    {"prefix": "01_Clients/_TEMPLATE/", "scope": "templates", "module": "client-template"},
+    {"prefix": "01_Clients/{slug}/Brain/", "scope": "client:{slug}", "module": "client-brain"},
+    {"prefix": "01_Clients/{slug}/Documents/", "scope": "client:{slug}", "module": "client-brain"},
+    {"prefix": "01_Clients/{slug}/Meetings/", "scope": "client:{slug}", "module": "client-brain"},
+    {"prefix": "01_Clients/{slug}/Invoices/", "scope": "finance", "module": "core"},
+    {"prefix": "01_Clients/", "scope": "ops", "module": "core", "_note": "client root files (profile, status), e-mail indexes"},
+    {"prefix": "00_Brain/", "scope": "ops", "module": "core"},
+    {"prefix": "02_Meetings/", "scope": "ops", "module": "core"},
+    {"prefix": "05_Operations/", "scope": "ops", "module": "core"},
+    {"prefix": "finance/", "scope": "finance", "module": "core"},
+    {"prefix": "tools/", "scope": null, "_note": "code stays local"},
+    {"prefix": "scripts/", "scope": null}
+  ],
+  "area_rules": [
+    {"area": "finance", "scope": "finance", "module": "core", "_note": "also the fallback for every finance-<entity code> area"},
+    {"area": "clients", "scope": "ops", "module": "core"},
+    {"area": "meetings", "scope": "ops", "module": "core"},
+    {"area": "brain", "scope": "ops", "module": "core"},
+    {"area": "operations", "scope": "ops", "module": "core"},
+    {"area": "sales", "scope": "gtm", "module": "sales"},
+    {"area": "marketing", "scope": "gtm", "module": "marketing"}
+  ],
+  "record_kind_scopes": {
+    "_note": "Records of these kinds are money and go to finance whatever their source file.",
+    "invoice": "finance",
+    "expense": "finance",
+    "balance": "finance",
+    "ledger_line": "finance"
+  }
+}

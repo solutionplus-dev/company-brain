@@ -1,0 +1,14 @@
+# Reviewed exceptions for scripts/audit_public.py: "relative/path:text on the allowed line".
+# Test fixtures: invented values that the redaction and audit tests need.
+tools/index/embed/test_redact.py:DE89 3704 0044 0532 0130 00
+tools/index/embed/test_redact.py:DE12 3456 7890 1234 5678 90
+tools/index/embed/test_redact.py:+44 20 7946 0958
+tools/index/embed/test_redact.py:max.muster@gmail.com
+tests/test_smoke.py:jane.roe@privatemail.net
+tools/index/supabase/brain_redact.py:passport / ID / permit numbers within 30
+# The licence holder, by decision of the publisher.
+LICENSE:SolutionPlus UG (haftungsbeschränkt)
+# Commit identities that may appear in a published history (checked with --git).
+git:SolutionPlus <info@solutionplus.io>
+# The repository's own public address in the start section.
+README.md:https://github.com/solutionplus-dev/company-brain.git

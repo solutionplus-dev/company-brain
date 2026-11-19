@@ -1,0 +1,10 @@
+{
+  "company": "Harbour & Pine",
+  "owner_role": "the owner",
+  "timezone": "UTC",
+  "entities": [
+    {"code": "DE", "name": "Harbour & Pine GmbH", "folder": "Entity_DE", "currency": "EUR"},
+    {"code": "UK", "name": "Harbour & Pine Ltd", "folder": "Entity_UK", "currency": "GBP"}
+  ],
+  "not_our_entity": ["Brindlemoor Robotics UK"]
+}

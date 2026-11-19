@@ -1,0 +1,33 @@
+{
+  "_note": "Size budgets for the brain. KB = 1024 bytes. Starting values chosen so that a monthly rollover keeps each register readable in one pass; adjust them here. WARN at 80 % of a budget, OVER at 100 %. `rollover` tells the weekly run which method stages a proposal: sections = `##`/`#` sections whose heading starts with a full date (YYYY-MM-DD) older than the first day of the previous month (rollover.py; a register without such headings needs manual); changelog = JSON entries by `when` (rollover.py); manual = the agent splits it by judgement.",
+  "warn_ratio": 0.8,
+  "registers": [
+    {"path": "00_Brain/OPEN_LOOPS.md", "kb": 120, "rollover": "manual", "note": "cross-cutting owner actions; closed items live in the archive"},
+    {"path": "00_Brain/EMAIL_BACKLOG.md", "kb": 100, "rollover": "sections", "note": "daily sweep blocks"},
+    {"path": "00_Brain/DEADLINES.md", "kb": 80, "rollover": "sections", "level": 1, "note": "dated blocks"},
+    {"path": "00_Brain/CALENDAR.md", "kb": 40, "rollover": "manual", "note": "standing meetings and gaps"},
+    {"path": "00_Brain/RECOMMENDATIONS.md", "kb": 30, "rollover": "manual", "note": "owner-only advisory register; closed rows roll monthly"},
+    {"path": "00_Brain/SCHEDULES/ROUTINE_LOG.md", "kb": 120, "rollover": "sections", "note": "one entry per run; closed months go to the archive"},
+    {"path": "TODO.md", "kb": 30, "rollover": "manual", "note": "the owner's one-page morning list, regenerated daily"}
+  ],
+  "generic": {
+    "kb": 100,
+    "exts": [".md", ".json", ".csv"],
+    "exclude_dirs": ["node_modules", ".git", ".index", "__pycache__"],
+    "exclude_dir_prefixes": ["_backup_"],
+    "exclude_paths": ["00_Brain/ARCHIVE", "examples"],
+    "exclude_components": ["_secrets", "credentials"],
+    "exclude_if_contains": ["credential"],
+    "info_globs": [
+      "02_Meetings/**/transcript.md",
+      "02_Meetings/registry.json",
+      "finance/ledger/**"
+    ],
+    "info_note": "INFO = verbatim raw sources and generated files: reported, never counted as OVER, never rolled over."
+  },
+  "media": {
+    "exts": [".mp4", ".m4v", ".mov", ".m4a", ".mp3", ".wav", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".heic"],
+    "max_hash_mb": 2048,
+    "state_file": ".index/size_check_state.json"
+  }
+}

@@ -1,0 +1,3 @@
+jnl,date,account,account_name,description,debit,credit,currency,counterparty,source,certainty
+UK-2030-001,2030-02-10,4000,Revenue,Brindlemoor milestone 1,,4200.00,GBP,Brindlemoor Robotics UK,Entity_UK/Invoices/2030/INV-UK-2030-001.pdf,booked
+UK-2030-001,2030-02-10,1200,Receivables,Brindlemoor milestone 1,4200.00,,GBP,Brindlemoor Robotics UK,Entity_UK/Invoices/2030/INV-UK-2030-001.pdf,booked

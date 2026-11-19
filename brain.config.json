@@ -1,0 +1,9 @@
+{
+  "company": "",
+  "owner_role": "the owner",
+  "timezone": "",
+  "entities": [],
+  "not_our_entity": [],
+  "redact_patterns": [],
+  "_help": "Run `python3 scripts/init.py` to fill this in. entities: one object per legal entity: {\"code\": \"DE\", \"name\": \"Example GmbH\", \"folder\": \"Entity_DE\", \"currency\": \"EUR\"}. The code is the short label used in registers (\"DE: pay the insurance\"). not_our_entity: names that contain one of your codes but mean somebody else (a client called \"Something DE\"). redact_patterns: regular expressions for identity-number formats of your countries; whatever they match is replaced by [redacted] before text is embedded for the shared store."
+}

@@ -1,0 +1,4 @@
+{
+  "_help": "One object per client: slug (folder name), name, kind, billing_entity (an entity code in lower case, or \"undecided\"), stage (lead | proposal | delivery | paused | closed), updated (yyyy-mm-dd). Contact people do not belong here: roles go to 00_Brain/PEOPLE.md.",
+  "clients": []
+}

@@ -1,0 +1,28 @@
+{
+  "clients": [
+    {
+      "slug": "northlight-bookshop",
+      "name": "Northlight Bookshop",
+      "kind": "owner-run business",
+      "billing_entity": "de",
+      "stage": "delivery",
+      "updated": "2030-03-04"
+    },
+    {
+      "slug": "brindlemoor-robotics",
+      "name": "Brindlemoor Robotics UK",
+      "kind": "founder with a first product",
+      "billing_entity": "uk",
+      "stage": "delivery",
+      "updated": "2030-03-03"
+    },
+    {
+      "slug": "tidewater-clinic",
+      "name": "Tidewater Clinic",
+      "kind": "prospect",
+      "billing_entity": "undecided",
+      "stage": "proposal",
+      "updated": "2030-02-27"
+    }
+  ]
+}

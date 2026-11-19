@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""brain — one command for agents and people to search the company brain.
+
+  scripts/brain ask "<question>"            meaning + keywords over the local index (digests, notes, registers, mail digests)
+  scripts/brain ask "<question>" --json     the same as JSON (path, area, tier, purpose, snippet)
+  scripts/brain ask "<question>" --area finance-de --all      limit to an area; --all includes archived material
+  scripts/brain records kind=deadline company=DE            business records read from the registers (deadline, todo, decision,
+                                            meeting, client, person, recommendation, ledger_line)
+  scripts/brain store "<question>"          the same question against the shared store, if you run one (needs .env)
+  scripts/brain file "<path>"               what the index knows about one file
+  scripts/brain status                      how many files, records and embedded chunks; last refresh; store check
+  scripts/brain check                       run the standing questions (00_Brain/SYSTEM/EVALUATIONS/QUESTIONS.md): does the search find what it should
+
+Runs from any folder. Changes none of your files (it leaves a time stamp of the last search in .index/). Standard library only; the heavy work is in tools/index/.
+The answer is the file on disk: open the path it returns and cite it. Search first, then read; do not grep the whole tree.
+"""
+import os, subprocess, sys, sqlite3
+
+REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), ".."))
+ROOT = os.path.abspath(os.environ.get("BRAIN_ROOT") or REPO)
+Q = os.path.join(REPO, "tools", "index", "query.py")
+SYNC = os.path.join(REPO, "tools", "index", "supabase_sync.py")
+
+
+def run(args):
+    return subprocess.call([sys.executable] + args, cwd=ROOT)
+
+
+def status():
+    idx = os.path.join(ROOT, ".index", "vault_index.db")
+    vec = os.path.join(ROOT, ".index", "vectors.db")
+    try:
+        c = sqlite3.connect("file:%s?mode=ro" % idx, uri=True)
+        files = c.execute("select count(*) from files").fetchone()[0]
+        recs = c.execute("select count(*) from records").fetchone()[0]
+        last = c.execute("select mode, ended, files_added, files_changed, chunks_embedded from runs order by id desc limit 1").fetchone()
+        print("local index : %d files, %d business records" % (files, recs))
+        print("last refresh: %s" % (last,))
+    except sqlite3.Error as e:
+        print("local index : not readable (%s). Run: python3 tools/index/refresh.py" % e)
+    try:
+        v = sqlite3.connect("file:%s?mode=ro" % vec, uri=True)
+        print("embeddings  : %d chunks in .index/vectors.db" % v.execute("select count(*) from vectors").fetchone()[0])
+    except sqlite3.Error as e:
+        print("embeddings  : not readable (%s). Run: python3 tools/index/embed/embed.py pending" % e)
+    if not os.path.isfile(os.path.join(ROOT, ".env")):
+        print("shared store: not set up (no .env); see docs/STORE.md if you want one")
+        return 0
+    print("shared store:")
+    return run([SYNC, "--verify"])
+
+
+def check(rest):
+    """Run the standing questions (00_Brain/SYSTEM/EVALUATIONS/QUESTIONS.md) and report how many bring
+    their expected file back in the first five results. Writes nothing."""
+    import json
+    qfile = os.path.join(ROOT, "00_Brain", "SYSTEM", "EVALUATIONS", "QUESTIONS.md")
+    try:
+        lines = open(qfile, encoding="utf-8").read().splitlines()
+    except OSError as e:
+        print("no standing questions (%s)" % e)
+        return 2
+    rows = []
+    for line in lines:
+        if not line.startswith("|") or set(line) <= set("|-: "):
+            continue
+        cells = [c.strip() for c in line.replace("\\|", "\x00").strip("|").split("|")]
+        if len(cells) < 2 or cells[0].lower() == "question":
+            continue
+        rows.append((cells[0], [x.strip() for x in cells[1].split("\x00") if x.strip()]))
+    hits = 0
+    for question, expected in rows:
+        out = subprocess.run([sys.executable, Q, "--json", "--limit", "5", question] + rest, cwd=ROOT,
+                             capture_output=True, text=True).stdout
+        try:
+            paths = [r.get("path", "") for r in json.loads(out)]
+        except ValueError:
+            paths = []
+        place = next((i + 1 for i, path in enumerate(paths) if any(e.lower() in path.lower() for e in expected)), 0)
+        hits += 1 if place else 0
+        print("%s  %-52s %s" % ("ok  " if place else "MISS", question[:52],
+                                ("result %d" % place) if place else ("expected: " + " | ".join(expected))))
+    print("\n%d of %d standing questions answered in the first five results." % (hits, len(rows)))
+    return 0
+
+
+def main(a):
+    if not a or a[0] in ("-h", "--help", "help"):
+        print(__doc__)
+        return 0
+    cmd, rest = a[0], a[1:]
+    if cmd == "ask":
+        return run([Q] + rest)
+    if cmd == "records":
+        return run([Q, "--records"] + rest)
+    if cmd == "file":
+        return run([Q, "--info"] + rest)
+    if cmd == "store":
+        return run([SYNC, "search"] + rest)
+    if cmd == "status":
+        return status()
+    if cmd == "check":
+        return check(rest)
+    print(__doc__)
+    return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

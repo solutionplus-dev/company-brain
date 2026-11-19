@@ -1,0 +1,122 @@
+{
+  "_note": "Model and chunking settings for the embedding lane (tools/index/embed). Read by setup.sh and embed.py. Changing the model or revision requires a full re-embed.",
+  "model": {
+    "name": "EmbeddingGemma 2 (multimodal checkpoint, text path used)",
+    "backend": "mlx",
+    "repo": "mlx-community/embeddinggemma-2-4bit",
+    "revision": "8ab839e127cb8cb305edd71fb7a02c82f2d49ab3",
+    "source_revision": "914f7f89142e33e77833254d9c9b90c3cef7303b",
+    "quantisation": "affine 4-bit, group size 64 (smallest published; MLX cannot quantise to 1 bit)",
+    "weights_file": "model.safetensors",
+    "weights_sha256": "c02e89e903650186b79b4aad7fd4bdccaeb07a91f6046487ad0bd209e7d4b0c0",
+    "weights_bytes": 1098381958,
+    "tokenizer_sha256": "4d777ef5bdc1aa36227abdfb77c3e49e7b9c892d16e1b6bda41c393504828be4",
+    "files": [
+      ".gitattributes",
+      "1_Pooling/config.json",
+      "2_Normalize/config.json",
+      "README.md",
+      "chat_template.jinja",
+      "config.json",
+      "config_sentence_transformers.json",
+      "model.safetensors",
+      "model.safetensors.index.json",
+      "modules.json",
+      "preprocessor_config.json",
+      "processor_config.json",
+      "sentence_bert_config.json",
+      "tokenizer.json",
+      "tokenizer_config.json",
+      "validation.json"
+    ],
+    "local_dir": ".index/models/embeddinggemma-2-4bit",
+    "base_model": "google/embeddinggemma-2",
+    "licence": "apache-2.0"
+  },
+  "runtime": {
+    "engine": "MLX via mlx-vlm embedding loader",
+    "packages": {
+      "mlx": "0.32.3",
+      "transformers": "5.18.0",
+      "numpy": "2.5.5",
+      "pathspec": "1.1.1"
+    },
+    "mlx_vlm_git": "https://github.com/Blaizzy/mlx-vlm.git",
+    "mlx_vlm_commit": "3d87e88402f307efbf68e568971aa887ee7d9ed0",
+    "dtype": "bfloat16 (model default; never float16)",
+    "pooling": "mean (1_Pooling) then L2 normalise (2_Normalize); the loader returns text_embeds",
+    "max_length": 2048,
+    "batch_size": 16
+  },
+  "dimension": 768,
+  "prefixes": {
+    "query": "task: search result | query: ",
+    "document": "title: none | text: "
+  },
+  "chunking": {
+    "chars": 1200,
+    "overlap": 150,
+    "split": "paragraph boundaries (blank lines); long paragraphs split on whitespace with the same overlap"
+  },
+  "storage": {
+    "bin": "sign bit of each of the 768 dimensions, packed with numpy.packbits (96 bytes)",
+    "full": "unit vector; format set by full_format",
+    "full_format": "int8",
+    "full_format_alternatives": [
+      "float16"
+    ],
+    "shortlist": 300,
+    "top_k_default": 20
+  },
+  "exclusions": {
+    "brainignore": ".brainignore is applied as gitignore syntax (pathspec)",
+    "path_contains": [
+      "_secrets/",
+      "credentials/",
+      "passport",
+      "visa",
+      "id_card",
+      "id-card",
+      "residence",
+      "permit",
+      "reisepass",
+      "aufenthalt",
+      "ausweis",
+      "credential",
+      "recoverycode",
+      "recovery_code",
+      "recovery code",
+      "keystore",
+      "_archive/",
+      "Repos/",
+      ".env",
+      ".mcp.json",
+      ".pfx",
+      ".pem",
+      ".key",
+      ".p12",
+      ".jks"
+    ],
+    "path_prefix_name_pattern": {
+      "_note": "One guarded folder: inside `prefix`, a file whose name contains any of these words is never embedded. Use it for a client whose material includes special-category data (health, for example). Leave prefix empty to switch the guard off.",
+      "prefix": "",
+      "name_contains": [
+        "health",
+        "medical",
+        "patient",
+        "pseudonym"
+      ]
+    },
+    "text_extensions": [
+      ".md",
+      ".txt",
+      ".csv",
+      ".json",
+      ".html",
+      ".vtt",
+      ".eml",
+      ".digest.md"
+    ],
+    "no_text_rule": "a file with a non-text extension is embedded only through its sibling <name>.digest.md; without a digest it is counted as no_text"
+  }
+}

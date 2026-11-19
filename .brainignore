@@ -1,0 +1,12 @@
+# One pattern per line (name/ for a folder, *.ext for a file pattern, dir/sub/ from the root).
+# Paths listed here are not catalogued, not searched, not embedded, and never leave this computer.
+# Add the folder of any client whose material is confidential or special-category the day it arrives.
+_secrets/
+credentials/
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+.env
+.env.*

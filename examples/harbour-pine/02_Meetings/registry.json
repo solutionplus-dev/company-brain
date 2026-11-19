@@ -1,0 +1,29 @@
+{
+  "meetings": [
+    {
+      "id": "manual:2030-03-03_brindlemoor-milestone-review",
+      "title": "Brindlemoor: milestone 2 review",
+      "date": "2030-03-03",
+      "time_local": "14:00",
+      "duration_min": 45,
+      "client": "brindlemoor-robotics",
+      "type": "client",
+      "platform": "video call",
+      "path": "02_Meetings/2030/2030-03-03_brindlemoor-milestone-review",
+      "has_transcript": false,
+      "has_notes": true,
+      "decisions": ["DEC-2030-003"]
+    },
+    {
+      "id": "manual:2030-02-27_tidewater-intro",
+      "title": "Tidewater Clinic: first call",
+      "date": "2030-02-27",
+      "client": null,
+      "type": "prospect",
+      "platform": "phone",
+      "path": "02_Meetings/2030/2030-02-27_tidewater-intro",
+      "has_transcript": false,
+      "has_notes": true
+    }
+  ]
+}
