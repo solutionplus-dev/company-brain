@@ -7,6 +7,6 @@ Read the root `AGENTS.md` first.
 
 1. **The index is rebuilt from the files, never the other way round.** No tool writes a register, a record or a journal.
 2. **Nothing about the company is hard-coded.** Names and legal entities come from `brain.config.json` through `index/brainconfig.py`.
-3. **A register's shape and its importer change together.** Run `python3 tests/test_smoke.py` after either, and `python3 tests/test_hybrid.py` after a change to the search (`tools/index/hybrid.py`, `query.py`).
+3. **A register's shape and its importer change together.** Run `python3 tests/test_smoke.py` after either, and `python3 tests/test_hybrid.py` after a change to the search (`tools/index/hybrid.py`, `query.py`). `python3 tools/vault_health/name_check.py` lists files whose name explains nothing; it proposes and never renames.
 4. **What may leave the computer is decided in one file:** `index/supabase/scopes.json`. When in doubt, a path stays local.
 5. **No secret in code or in a log.** Keys are read from `.env` by name and never printed.

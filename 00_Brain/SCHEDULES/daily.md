@@ -72,7 +72,7 @@ Every item ends with one state: **done** (what was found and where it was filed)
 16. **Promises to clients due in the next seven days** (each `STATUS.md`, `01_Clients/WATCHLIST.md`): on track, at risk or late.
 
 **Files and index** (item 17 during the run; items 18 and 19 after Step 3)
-17. **New files.** `00_Brain/INBOX/` and the downloads folder (new since the window start): identify, copy to the right place (never move out of downloads), MANIFEST row, digest. Private material is not opened and not filed.
+17. **New files.** `00_Brain/INBOX/` and the downloads folder (new since the window start): identify, copy to the right place (never move out of downloads), MANIFEST row, digest. Name it so the name explains it (`AGENTS.md`, "A name must explain the file"): a raw original is renamed in the brain only when the better name is at least 90 % certain; otherwise it keeps its name and the suggestion goes into the MANIFEST row and the digest. Private material is not opened and not filed.
 18. **The syncs.** `python3 tools/index/refresh.py` → if you run a shared store: `python3 tools/index/supabase_sync.py --apply` then `--verify` → `python3 tools/vault_health/size_check.py`. Report the counts, the verify line and any register over budget. A sync that fails is reported and never blocks the run.
 19. **Summaries.** Every folder changed today has a `SUMMARY.md` with today's "Last verified". If you keep a dashboard, rebuild it now from the files, never by hand.
 

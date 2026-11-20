@@ -22,6 +22,9 @@ year, history copies and the search's own test files rank below the document tha
 Every hit says why it is there (`why`) and how far to trust it (`confidence`: strong, fair, weak).
 When nothing is better than weak the search says so: the right answer may be "not in the brain".
 
+For agents, context() returns the matching passages themselves with their line ranges, so the answer is
+read from a few lines instead of from whole files.
+
 Standard library only. Read-only, except ensure_passages(), which the refresh calls.
 """
 from __future__ import annotations
@@ -186,7 +189,8 @@ def keyword_names(conn: sqlite3.Connection, an: dict, frag: str, fparams: list, 
     terms = an["terms"]
     if not terms:
         return []
-    sql = ("SELECT f.path, f.name, f.kind, f.tier FROM files_fts JOIN files f ON f.path = files_fts.path "
+    tier = "f.tier" if "tier" in {c[1] for c in conn.execute("PRAGMA table_info(files)")} else "NULL AS tier"
+    sql = (f"SELECT f.path, f.name, f.kind, {tier} FROM files_fts JOIN files f ON f.path = files_fts.path "
            "WHERE files_fts MATCH ?" + frag + " LIMIT 600")
     try:
         rows = conn.execute(sql, ["{name} : (" + " OR ".join(t["expr"] for t in terms) + ")"] + fparams).fetchall()
@@ -279,7 +283,7 @@ def keyword_passages(vectors_db: Path, an: dict, depth: int = DEPTH) -> tuple[li
             return None, "no passage index (the next refresh builds it)"
     except sqlite3.Error as e:
         return None, f"passage index not readable ({type(e).__name__})"
-    sql = ("SELECT c.sha256, snippet(chunks_fts, 0, '[', ']', '…', 24) FROM chunks_fts "
+    sql = ("SELECT c.sha256, snippet(chunks_fts, 0, '[', ']', '…', 24), c.ord FROM chunks_fts "
            "JOIN chunks c ON c.rowid = chunks_fts.rowid WHERE chunks_fts MATCH ? ORDER BY bm25(chunks_fts) LIMIT ?")
     out: list[dict] = []
     seen: set[str] = set()
@@ -287,11 +291,11 @@ def keyword_passages(vectors_db: Path, an: dict, depth: int = DEPTH) -> tuple[li
         for label, expr in match_exprs(an):
             if len(out) >= depth:
                 break
-            for sha, snip in con.execute(sql, (expr, depth * 3)).fetchall():
+            for sha, snip, ord_ in con.execute(sql, (expr, depth * 3)).fetchall():
                 for (path,) in con.execute("SELECT path FROM file_map WHERE sha256 = ? ORDER BY path", (sha,)):
                     if path not in seen:
                         seen.add(path)
-                        out.append({"path": path, "passage": snip, "kw": label})
+                        out.append({"path": path, "passage": snip, "kw": label, "ref": (sha, ord_)})
                 if len(out) >= depth * 2:
                     break
     except sqlite3.Error as e:
@@ -329,7 +333,8 @@ def meaning_hits(index_db: Path, question: str, k: int = DEPTH, embed_file: Path
     for h in hits:
         if isinstance(h, dict):
             if h.get("path"):
-                out.append({"path": str(h["path"]), "score": h.get("score"), "passage": h.get("text") or ""})
+                out.append({"path": str(h["path"]), "score": h.get("score"), "passage": h.get("text") or "",
+                            "ref": (h["sha256"], h["ord"]) if h.get("sha256") is not None and h.get("ord") is not None else None})
         elif isinstance(h, (list, tuple)):
             if h and h[0]:
                 out.append({"path": str(h[0]), "score": None, "passage": ""})
@@ -529,6 +534,12 @@ def search(conn: sqlite3.Connection, index_db: Path | None, question: str, limit
         r["score"] = round(s, 5)
         r["why"] = ", ".join(why)
         r["confidence"] = conf
+        refs = []
+        for name in ("passage", "meaning"):          # where the best passages are, for context()
+            ref = rk[name][1].get("ref") if name in rk else None
+            if ref and tuple(ref) not in refs:
+                refs.append(tuple(ref))
+        r["_refs"] = refs
         out.append(r)
 
     best = next((c for c in ("strong", "fair", "weak") if any(r["confidence"] == c for r in out)), None)
@@ -549,3 +560,89 @@ def search(conn: sqlite3.Connection, index_db: Path | None, question: str, limit
     info["mode"] = ("keywords + meaning" if lists["meaning"] else "keywords only")
     info["seconds"] = round(time.time() - t0, 2)
     return out, info
+
+
+# ---------------------------------------------------------------- for agents: the passages, not the files
+
+def _locate(source: Path, chunk: str) -> tuple[int, int] | None:
+    """Line range of a passage in its source file, or None when it cannot be placed (redacted or converted text)."""
+    try:
+        if source.stat().st_size > 5_000_000:
+            return None
+        body = source.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return None
+    at = body.find(chunk)                       # the passage as stored: an exact place
+    if at >= 0:
+        start = body.count("\n", 0, at) + 1
+        return start, start + chunk.count("\n")
+    # otherwise a line of it that occurs exactly once in the file; a repeated line would give a wrong place
+    probes = sorted({ln.strip() for ln in chunk.splitlines() if len(ln.strip()) >= 25}, key=len, reverse=True)[:8]
+    for probe in probes:
+        if body.count(probe) == 1:
+            at = body.find(probe)
+            start = max(1, body.count("\n", 0, at) + 1 - chunk[:chunk.find(probe)].count("\n"))
+            return start, start + chunk.count("\n")
+    return None
+
+
+def _window(text: str, terms: list[str], n: int) -> str:
+    """At most n characters of a passage, cut around the first place a term of the question occurs."""
+    if len(text) <= n:
+        return text
+    low = text.lower()
+    at = min((i for i in (low.find(t.lower().strip('"')) for t in terms) if i >= 0), default=0)
+    start = max(0, min(at - n // 3, len(text) - n))
+    piece = text[start:start + n].strip()
+    return ("…" if start > 0 else "") + piece + ("…" if start + n < len(text) else "")
+
+
+def context(rows: list[dict], info: dict, index_db: Path | None, root: Path, top: int = 5, per_file: int = 2,
+            budget: int = 6000) -> list[dict]:
+    """What an agent needs to answer without opening whole files: for the best hits, the passages that
+    matched, each with the file it is read from and its line range. Weak hits are left out unless there is
+    nothing else. `budget` caps the passage text in characters. Passages come from the passage store, so
+    they are redacted the way the embedder stored them; hits outside that store carry their snippet only."""
+    good = [r for r in rows if r.get("confidence") != "weak"] or rows[:3]
+    vdb = None
+    if index_db is not None and vectors_db_for(Path(index_db)).is_file():
+        try:
+            vdb = sqlite3.connect(f"file:{vectors_db_for(Path(index_db))}?mode=ro", uri=True, timeout=5)
+            has_src = "src_path" in [c[1] for c in vdb.execute("PRAGMA table_info(file_map)")]
+        except sqlite3.Error:
+            vdb = None
+    out = []
+    share = max(200, budget // max(1, len(good[:top])))      # every file gets its part of the budget
+    for r in good[:top]:
+        block = {k: r.get(k) for k in ("path", "confidence", "why", "purpose", "area", "tier")}
+        block["passages"] = []
+        left = share
+        for sha, ord_ in (r.get("_refs") or [])[:per_file]:
+            if vdb is None or left < 80:
+                break
+            row = vdb.execute("SELECT text FROM chunks WHERE sha256 = ? AND ord = ?", (sha, ord_)).fetchone()
+            if not row:
+                continue
+            text = row[0].strip()
+            src = None
+            if has_src:
+                got = vdb.execute("SELECT src_path FROM file_map WHERE sha256 = ? AND path IN (?, ?)",
+                                  (sha, r["path"], r["path"] + ".digest.md")).fetchone() \
+                    or vdb.execute("SELECT src_path FROM file_map WHERE sha256 = ?", (sha,)).fetchone()
+                src = got[0] if got and got[0] else None
+            src = src or r["path"]
+            if Path(src).is_absolute():
+                try:
+                    src = str(Path(src).resolve().relative_to(Path(root).resolve()))
+                except ValueError:
+                    src = r["path"]
+            lines = _locate(Path(root) / src, text)
+            text = _window(text, info.get("terms") or [], left)
+            left -= len(text)
+            block["passages"].append({"source": src, "lines": list(lines) if lines else None, "text": text})
+        if not block["passages"] and r.get("snippet"):
+            block["passages"].append({"source": r["path"], "lines": None, "text": r["snippet"]})
+        out.append(block)
+    if vdb is not None:
+        vdb.close()
+    return out

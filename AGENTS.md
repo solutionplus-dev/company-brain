@@ -64,6 +64,7 @@ Every module folder has its own `AGENTS.md` with what is local to it. Nothing th
 
 Search before you grep.
 
+- **Agents start here:** `scripts/brain find "<question>"` returns the passages that answer, each with its file and line range, and the business records whose reference is named in the question (`--json` for a structured result). Answer from those lines and cite the path; read a file only at the lines given, and a whole file only when its passage does not answer. Do not open files one after another to see which is relevant.
 - `scripts/brain ask "<question or terms>"` — files, by keyword and (when embeddings are set up) by meaning. Put a number, a code or a "quoted phrase" in the question when you have one: it is matched exactly. Each hit carries `why` and `confidence`; on "weak matches only" say the brain may not hold it, do not guess.
 - `scripts/brain records kind=deadline company=<CODE>` — business records read from the registers (deadline, todo, decision, meeting, client, person, recommendation, ledger_line).
 - `scripts/brain file "<path>"` — what the index knows about one file.
@@ -94,6 +95,14 @@ Two, and no more without the owner's yes. Each is a file; the scheduler only say
 - **Registers**: the current month plus everything still open; older closed blocks move word for word to `00_Brain/ARCHIVE/`. Replacing a live register with its rolled-over version needs the owner's approval.
 
 Detail: `00_Brain/SYSTEM/TIME_TIERS.md`.
+
+**A name must explain the file.** Whoever adds a file names it so the name alone says what it is: `YYYY-MM-DD_Party_WhatItIs_Reference[_Amount].ext`, the date of the document, not of the download. The search ranks a file named for its topic first, so a good name is also how the file is found.
+
+- Files the brain writes (notes, digests, drafts, reports) always get such a name, or the fixed name their folder prescribes.
+- A raw original (what arrived from outside) keeps its name unless the better name is at least 90 % certain: the date is printed in the document, the party is named in it, the kind of document is beyond doubt, any reference or amount in the name is copied from it, and the file was read. Then the copy in the brain is renamed at filing, without asking. If any part is a guess, the name stays and the suggestion is written into the MANIFEST row and the digest.
+- Nothing is lost by a rename: the MANIFEST row keeps the original name beside the new one with the file's hash, and the file at its source is never renamed or moved. Folders that mirror a cloud folder are never renamed.
+- A file that is already filed and referred to is renamed only together with every reference to it.
+- `python3 tools/vault_health/name_check.py` lists files whose name explains nothing, with a starting point for a better one. It proposes; it never renames.
 
 ## 8. Every folder has a SUMMARY.md
 

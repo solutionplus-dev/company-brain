@@ -39,6 +39,17 @@ scripts/brain ask "which deadlines are coming up"           # plain words
 scripts/brain ask "fixed price contract" --json --explain   # for agents: verdict, alpha and the reason for each hit
 ```
 
+### For agents: the passages, not the files
+
+An agent that gets ten paths back opens ten files to find the two paragraphs it needs. `scripts/brain find "<question>"` returns those paragraphs instead: for the best hits only, the passage that matched, the file it is read from and its line range, and the business records whose reference is named in the question.
+
+```bash
+scripts/brain find "where is DEC-2030-003 decided"
+scripts/brain find "which deadlines are coming up" --json --top 3 --budget 3000
+```
+
+`--budget` caps the passage text in characters (6,000, shared between the files) and `--top` the number of files (5). A passage is placed by exact match or by a line that occurs once in the file; when it cannot be placed the result says so instead of giving a wrong range. Passages come from the passage store, so they are redacted the way the embedder stored them; a hit outside that store carries its short snippet. The agent answers from those lines, cites the path, and opens a whole file only when the passage does not answer.
+
 What changed when the brain this template was drawn from moved from "every word must match, in the first part of each file, fused with meaning" to the above (its own numbers, about 5,800 files; `scripts/brain check` gives you yours):
 
 | Test | Before | After |

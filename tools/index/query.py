@@ -10,6 +10,9 @@
       --alpha X     weight of meaning against keywords, 0 to 1; chosen from the question when left out
       --no-embed    keywords only        --meaning    ask the model even when the exact text was found
       --explain     with --json: an object {question, kind, alpha, mode, verdict, results} instead of a list
+      --context     for agents: the passages that matched, with the file and line range each is read from, and
+                    the business records whose reference is named in the question; --budget N characters of
+                    passage text (6000), --top N files (5). Read those lines, not the whole files.
   query.py --records [--json] [--limit N] kind=invoice status=open company=DE due_before=2030-12-01 [WORDS]
       Records (the `records` table, filled by the importers). Amounts are shown as written, never summed.
       Keys: kind, company, status, ref, currency, certainty, client (comma lists allowed: kind=invoice,expense);
@@ -165,6 +168,49 @@ def embed_paths(db: Path, q: str, k: int) -> list[str] | None:
     return None if hits is None else [h["path"] for h in hits]
 
 
+def records_for(conn: sqlite3.Connection, q: str, limit: int = 5) -> list[dict]:
+    """Business records whose reference is a number or code named in the question."""
+    if not table_exists(conn, "records"):
+        return []
+    out, seen = [], set()
+    for t in hybrid.analyse(q)["exact_terms"]:
+        for r in conn.execute(f"SELECT {RECORD_COLS} FROM records WHERE ref = ? OR ref LIKE ? LIMIT ?",
+                              (t["text"], f"%{t['text']}%", limit)):
+            if r["id"] not in seen:
+                seen.add(r["id"])
+                out.append(dict(r))
+    return out[:limit]
+
+
+def print_context(conn, db: Path, root: Path, q: str, rows: list[dict], info: dict, args) -> None:
+    """The agent view: verdict, then for each good hit the passages with line ranges, then matching records."""
+    blocks = hybrid.context(rows, info, db, root, top=args.top, budget=args.budget)
+    recs = records_for(conn, q)
+    if args.json:
+        print(json.dumps(dict(info, results=blocks, records=recs), ensure_ascii=False, indent=2, default=str))
+        return
+    print(f"find: {info.get('verdict')} · {info.get('mode', 'keywords only')} · {info.get('seconds', 0)} s")
+    if info.get("hint"):
+        print(f"note: {info['hint']}")
+    for i, b in enumerate(blocks, start=1):
+        print(f"[{i}] {b['path']}  ({b['confidence']}: {b['why']})")
+        if b.get("purpose"):
+            print(f"    what: {b['purpose']}")
+        for p in b["passages"]:
+            where = f"lines {p['lines'][0]}-{p['lines'][1]}" if p["lines"] else "lines not placed"
+            src = "" if p["source"] == b["path"] else f" of {p['source']}"
+            print(f"    {where}{src}:")
+            for line in p["text"].splitlines():
+                print(f"      {line}")
+    if recs:
+        print("records:")
+        for r in recs:
+            print("  " + format_record(r).replace("\n", "\n  "))
+    if blocks:
+        print("next: answer from these lines and cite the path; read a file only at the lines given, "
+              "and a whole file only when its passage does not answer.")
+
+
 def parse_record_filters(tokens: list[str]) -> tuple[list[tuple[str, str]], str]:
     pairs: list[tuple[str, str]] = []
     words: list[str] = []
@@ -275,6 +321,10 @@ def main() -> None:
     ap.add_argument("--meaning", action="store_true", help="ask the model even when the exact text was found")
     ap.add_argument("--alpha", type=float, default=None, help="weight of meaning against keywords, 0 to 1")
     ap.add_argument("--explain", action="store_true", help="with --json: an object with the verdict and the reasons")
+    ap.add_argument("--context", action="store_true",
+                    help="for agents: the matching passages with their line ranges, not only the paths")
+    ap.add_argument("--budget", type=int, default=6000, help="with --context: characters of passage text at most")
+    ap.add_argument("--top", type=int, default=5, help="with --context: files at most")
     ap.add_argument("--records", action="store_true", help="search the records table (kind=... status=... ...)")
     ap.add_argument("--info", metavar="PATH", default=None)
     ap.add_argument("--stats", action="store_true")
@@ -339,6 +389,11 @@ def main() -> None:
     rows, info = run_search(conn, db, q, args.limit, args.entity, args.area, args.tier, args.all,
                             alpha=args.alpha, meaning=mode)
     stamp(root, "search", q)
+    if args.context:
+        print_context(conn, db, root, q, rows, info, args)
+        return
+    for r in rows:
+        r.pop("_refs", None)
     if args.json:
         payload = dict(info, results=rows) if args.explain else rows
         print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
