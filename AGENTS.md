@@ -40,7 +40,7 @@ Who the company is, and which legal entities it has, is written in one place: `b
 ├── brain.config.json                       who the company is: the only place that names it
 ├── TODO.md                                 the owner's daily page (written by the daily run)
 ├── 00_Brain/
-│   ├── SYSTEM/      how the brain works: system of records, time tiers, improvements, dreams
+│   ├── SYSTEM/      how the brain works: system of records, time tiers, improvements, its own to-do list, evaluations, dreams
 │   ├── SCHEDULES/   daily.md · weekly.md · ROUTINE_LOG.md · proposed/ · retired/
 │   ├── DAILY/ WEEKLY/ AUDITS/              logs, by year and month
 │   ├── KNOWLEDGE/   topic notes
@@ -64,7 +64,7 @@ Every module folder has its own `AGENTS.md` with what is local to it. Nothing th
 
 Search before you grep.
 
-- `scripts/brain ask "<question or terms>"` — files, by keyword and (when embeddings are set up) by meaning.
+- `scripts/brain ask "<question or terms>"` — files, by keyword and (when embeddings are set up) by meaning. Put a number, a code or a "quoted phrase" in the question when you have one: it is matched exactly. Each hit carries `why` and `confidence`; on "weak matches only" say the brain may not hold it, do not guess.
 - `scripts/brain records kind=deadline company=<CODE>` — business records read from the registers (deadline, todo, decision, meeting, client, person, recommendation, ledger_line).
 - `scripts/brain file "<path>"` — what the index knows about one file.
 - `scripts/brain store "<question>"` — the same question against the shared store, if you run one.
@@ -80,7 +80,7 @@ Two, and no more without the owner's yes. Each is a file; the scheduler only say
 | Run | When | File |
 |---|---|---|
 | Daily | every day, evening | `00_Brain/SCHEDULES/daily.md` — 19 checklist items and a twelve-question answer sheet |
-| Weekly | Monday morning | `00_Brain/SCHEDULES/weekly.md` — week ahead, finance week, cleanup, the dream, improvements |
+| Weekly | Monday morning | `00_Brain/SCHEDULES/weekly.md` — week ahead, finance week, catch-up of the weekday blocks, full index and backup |
 
 - Every run starts with a preflight of its sources and appends one entry to `00_Brain/SCHEDULES/ROUTINE_LOG.md`.
 - Every checklist item ends as `done`, `nothing` or `not read`.

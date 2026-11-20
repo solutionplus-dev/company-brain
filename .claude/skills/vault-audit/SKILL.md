@@ -1,6 +1,6 @@
 ---
 name: vault-audit
-description: Audit the brain for inconsistencies — registers against folders, legal entities kept apart, identifiers or secrets in text files, dead links, logs out of their month folders, missing routine-log entries. Read-only. Use for weekly Part D or "audit the brain", "is anything inconsistent".
+description: Audit the brain for inconsistencies — registers against folders, legal entities kept apart, identifiers or secrets in text files, dead links, logs out of their month folders, missing routine-log entries. Read-only. Use for Friday's block of the daily run (daily.md Step 3b), for the weekly run when it catches that block up, or "audit the brain", "is anything inconsistent".
 ---
 
 # Audit

@@ -314,7 +314,7 @@ stateDiagram-v2
 
 ## 11. Monday: the weekly run and its catch-up
 
-Part A is written first so that it exists even if a later part fails. A block that already ended `done` during the week is read, not repeated.
+Part A is written first so that it exists even if a later part fails. A block that already ended `done` during the week is read, not repeated. The blocks are described only in `daily.md` Step 3b; Monday follows that checklist when it has to catch one up.
 
 ```mermaid
 flowchart TD
@@ -325,12 +325,12 @@ flowchart TD
   M -- "yes" --> MC["Month close per entity"]
   M -- "no" --> CU
   MC --> CU{"For each weekday block:<br/>did it end done?"}
-  CU -- "done" --> RD["Read its result into Part A"]
-  CU -- "partly or not run" --> RUN["Do it now<br/>Part C clean up, Part D audit,<br/>Part G dream, Part H improve,<br/>evaluate and enrich by daily.md Step 3b"]
-  RD --> PE
-  RUN --> PE["Part E<br/>full index, store sync, backup age"]
-  PE --> PF["Part F<br/>the linked brains' weekly routines"]
-  PF --> W["Weekly file, Monday's TODO.md,<br/>routine log, final message"]
+  CU -- "done" --> RD["Part C: read its result into Part A"]
+  CU -- "partly or not run" --> RUN["Part C: do it now,<br/>by that block's checklist<br/>in daily.md Step 3b"]
+  RD --> PD
+  RUN --> PD["Part D<br/>full index, store sync, backup age"]
+  PD --> PE["Part E<br/>the linked brains' weekly routines"]
+  PE --> W["Weekly file, Monday's TODO.md,<br/>routine log, final message"]
   W --> EV["Monday evening's daily run<br/>applies what the owner answered"]
 ```
 
@@ -449,26 +449,31 @@ sequenceDiagram
   autonumber
   actor U as Person or agent
   participant B as scripts/brain ask
-  participant Q as query.py
-  participant FTS as Full-text search
+  participant H as hybrid.py
+  participant C as Catalogue (files_fts)
+  participant P as Passages (chunks_fts)
   participant E as Embedder
-  participant V as vectors.db
 
   U->>B: A question in plain words
-  B->>Q: The question, with area, tier or entity filters
-  Q->>FTS: Keyword query
-  FTS-->>Q: Ranked paths
-  opt Embeddings are set up
-    Q->>E: Embed the question on the laptop
-    E->>V: Compare sign bits with every chunk (Hamming distance)
-    V-->>E: The best 300
-    E->>V: Exact score on those 300 with the 8-bit vectors
-    V-->>E: Ranked chunks with their paths
-    E-->>Q: Ranked paths
-    Q->>Q: Fuse both lists by reciprocal rank (k = 60)
+  B->>H: The question, with area, tier or entity filters
+  H->>H: Drop small words, spot numbers, codes and quoted phrases, choose alpha
+  H->>C: Keywords in path, name, purpose and the start of the text
+  C-->>H: Ranked files
+  H->>C: Keywords in the file name only
+  C-->>H: Files named for the topic
+  opt Passages exist (embeddings were set up)
+    H->>P: Keywords in every passage of the whole text
+    P-->>H: Ranked files with the passage
   end
-  Q-->>B: Paths, titles, snippets
-  B-->>U: The answer is the file: read it and cite its path
+  alt The exact number, code or phrase was found
+    H->>H: Those files first, model not started
+  else Embeddings are set up
+    H->>E: Embed the question (or read its vector from the cache)
+    E-->>H: Ranked files with the best passage and its similarity
+  end
+  H->>H: Fuse by weighted reciprocal rank (k = 60), digest counts for its original, logs and history copies below the home document
+  H-->>B: Paths with snippet, why and confidence, and a verdict
+  B-->>U: The answer is the file, read it and cite its path. On "weak matches only" say it was not found
 ```
 
 ## 17. What may leave the computer
@@ -693,7 +698,7 @@ flowchart TD
     L4["One brain per client project"]
   end
 
-  C3 -- "Step 4 and Part F run<br/>schedules/daily.md and weekly.md" --> L1
+  C3 -- "Step 4 and Part E run<br/>schedules/daily.md and weekly.md" --> L1
   C3 --> L2
   C3 --> L3
   C3 --> L4

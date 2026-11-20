@@ -5,7 +5,7 @@ Two, and no more without the owner's yes. The scheduler's whole prompt is: *"Rea
 | Run | Cadence | File | What it does |
 |---|---|---|---|
 | Daily | every day, evening (`30 21 * * *`) | `daily.md` | preflight, 19 checks, answer sheet, tomorrow's page, registers, index |
-| Weekly | Monday morning (`0 8 * * 1`) | `weekly.md` | week and month ahead, finance week, cleanup and compaction, audit, the dream, improvement proposals |
+| Weekly | Monday morning (`0 8 * * 1`) | `weekly.md` | week and month ahead, finance week, catch-up of the weekday blocks, full index and backup, the linked brains' weekly routines |
 
 **The self-improvement loop lives inside the daily run**, one block per weekday, about 15 minutes, each with its own checklist and a file as its result (`daily.md` Step 3b):
 
@@ -19,7 +19,7 @@ Two, and no more without the owner's yes. The scheduler's whole prompt is: *"Rea
 | Saturday | Dream (five buckets, propose only) | `SYSTEM/DREAMS/<yyyy>-W<ww>.md` |
 | Sunday | Improve (at most five proposals; did last week's change work?) | `SYSTEM/IMPROVEMENTS.md` "Proposed" |
 
-Monday's weekly run reads the six results into the week ahead and catches up any block that did not end `done`; the dream is never skipped.
+Monday's weekly run reads the six results into the week ahead and catches up any block that did not end `done`; the dream is never skipped. `daily.md` Step 3b is the only place where the blocks are described: the weekly run keeps no copy of that work. The blocks work from the brain's own to-do list, `../SYSTEM/BRAIN_TODO.md`, and write there what they could not finish.
 
 - `ROUTINE_LOG.md` — one appended entry per run. Never edited.
 - `proposed/` — a routine the brain suggests, as a file. It runs only after the owner writes `active` into it.

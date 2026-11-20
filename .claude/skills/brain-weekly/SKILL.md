@@ -1,6 +1,6 @@
 ---
 name: brain-weekly
-description: Run the weekly routine of the company brain — week ahead, finance week, cleanup and compaction, audit, the dream, improvement proposals. Use when the scheduled weekly task fires or the user says "weekly review", "week ahead", "clean up the brain", "dream".
+description: Run the weekly routine of the company brain — week ahead, finance week, catch-up of the weekday blocks (cleanup, audit, dream and improvement proposals are the daily run's blocks), full index and backup. Use when the scheduled weekly task fires or the user says "weekly review", "week ahead", "clean up the brain", "dream".
 ---
 
 # Weekly run

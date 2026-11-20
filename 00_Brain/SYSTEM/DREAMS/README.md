@@ -1,6 +1,6 @@
 # Dreams
 
-Once a week the brain reads everything that happened and writes down what it noticed: `<yyyy>-W<ww>.md`, written by Part G of the weekly run.
+Once a week the brain reads everything that happened and writes down what it noticed: `<yyyy>-W<ww>.md`, written by Saturday's block of the daily run (`00_Brain/SCHEDULES/daily.md` Step 3b; Monday's weekly run writes it when Saturday's did not finish, so the dream is never skipped).
 
 A dream **proposes and never applies**. It has five buckets, at most three entries each, every entry with its evidence and the exact change it suggests:
 

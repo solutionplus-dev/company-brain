@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """brain — one command for agents and people to search the company brain.
 
-  scripts/brain ask "<question>"            meaning + keywords over the local index (digests, notes, registers, mail digests)
-  scripts/brain ask "<question>" --json     the same as JSON (path, area, tier, purpose, snippet)
+  scripts/brain ask "<question>"            hybrid search of the local index: exact words (catalogue, file names, every passage)
+                                            and meaning, fused. Each hit says why it is there and how far to trust it
+                                            (strong, fair, weak). A number, a code or a "quoted phrase" is matched exactly.
+  scripts/brain ask "<question>" --json     the same as JSON (path, area, tier, purpose, snippet, why, confidence, score);
+                                            add --explain for the verdict too. --alpha 0..1 sets keywords against meaning.
   scripts/brain ask "<question>" --area finance-de --all      limit to an area; --all includes archived material
   scripts/brain records kind=deadline company=DE            business records read from the registers (deadline, todo, decision,
                                             meeting, client, person, recommendation, ledger_line)
@@ -13,6 +16,7 @@
 
 Runs from any folder. Changes none of your files (it leaves a time stamp of the last search in .index/). Standard library only; the heavy work is in tools/index/.
 The answer is the file on disk: open the path it returns and cite it. Search first, then read; do not grep the whole tree.
+When the search says "weak matches only", the brain may not hold the answer: say so, do not guess.
 """
 import os, subprocess, sys, sqlite3
 
