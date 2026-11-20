@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """brain — one command for agents and people to search the company brain.
 
+  scripts/brain find "<question>"           FOR AGENTS, the first call: the passages that answer, each with its file and
+                                            line range, plus matching business records. Read those lines, not whole files.
+                                            --json for a structured result; --budget N caps the text; --top N files.
   scripts/brain ask "<question>"            hybrid search of the local index: exact words (catalogue, file names, every passage)
                                             and meaning, fused. Each hit says why it is there and how far to trust it
                                             (strong, fair, weak). A number, a code or a "quoted phrase" is matched exactly.
@@ -93,6 +96,8 @@ def main(a):
         print(__doc__)
         return 0
     cmd, rest = a[0], a[1:]
+    if cmd in ("find", "context"):
+        return run([Q, "--context"] + rest)
     if cmd == "ask":
         return run([Q] + rest)
     if cmd == "records":

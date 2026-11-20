@@ -17,7 +17,7 @@ sys.path.insert(0, str(REPO / "tools" / "index"))
 sys.dont_write_bytecode = True
 import hybrid  # noqa: E402
 
-LONG = "# Supplier register\n\n" + ("A line of filler about nothing in particular.\n" * 700) \
+LONG = "# Supplier register\n\n" + "".join(f"Filler line number {i} about nothing in particular.\n" for i in range(700)) \
        + "\nThe contract reference is ZX-4471 and nothing else.\n"
 
 
@@ -100,6 +100,32 @@ class HybridSearch(unittest.TestCase):
         self.assertEqual(after["results"][0]["path"], "05_Operations/SUPPLIERS.md")
         self.assertIn("passage #1", after["results"][0]["why"])
         self.assertEqual(after["results"][0]["confidence"], "strong")
+
+
+    def test_6_agents_get_the_passage_and_its_lines(self):
+        self.add_passages()
+        out = run([REPO / "scripts/brain", "find", "--json", "--no-embed", "--top", "2", "--budget", "800",
+                   "where", "is", "ZX-4471", "mentioned"], self.root)
+        res = json.loads(out.stdout)
+        block = res["results"][0]
+        self.assertEqual(block["path"], "05_Operations/SUPPLIERS.md")
+        passage = block["passages"][0]
+        self.assertIn("ZX-4471", passage["text"])
+        first, last = passage["lines"]
+        self.assertTrue(any("ZX-4471" in ln for ln in LONG.splitlines()[first - 1:last]))
+        text = run([REPO / "scripts/brain", "find", "--no-embed", "where", "is", "DEC-2030-003", "decided"], self.root).stdout
+        self.assertTrue(text.startswith("find: found"))
+        self.assertIn("records:", text)
+        self.assertIn("next: answer from these lines", text)
+
+
+    def test_7_names_that_explain_nothing_are_listed_not_renamed(self):
+        (self.root / "05_Operations" / "scan0001.md").write_text("# Scan\n\nSomething.\n", encoding="utf-8")
+        run([REPO / "tools/index/refresh.py", "--no-embed"], self.root)
+        out = run([REPO / "tools/vault_health/name_check.py", "--print"], self.root).stdout
+        self.assertIn("05_Operations/scan0001.md", out)
+        self.assertNotIn("DEADLINES.md", out)                       # a register's fixed name explains itself
+        self.assertTrue((self.root / "05_Operations" / "scan0001.md").exists())
 
 
 if __name__ == "__main__":
