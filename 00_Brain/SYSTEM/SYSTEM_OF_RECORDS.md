@@ -10,6 +10,7 @@ Every kind of fact has exactly one owning file. Everything else links to it and 
 | Open actions | `00_Brain/OPEN_LOOPS.md` | any run adds; ticked only with evidence |
 | What was decided | `00_Brain/DECISIONS.md` | the meeting procedure; the owner |
 | What the brain advises | `00_Brain/RECOMMENDATIONS.md` | daily and weekly runs only |
+| What the brain itself still has to do | `00_Brain/SYSTEM/BRAIN_TODO.md` | the weekday blocks of the daily run |
 | Contradictions and decisions nobody may take alone | `00_Brain/OPEN_POINTS.md` | any run adds; weekly run closes on evidence |
 | People and roles | `00_Brain/PEOPLE.md` | any run on evidence |
 | Where each source is read | `00_Brain/SOURCES.md` | the owner |

@@ -390,6 +390,46 @@ def embed_query(text: str):
     return _embed_strings([CFG["prefixes"]["query"] + text])[0]
 
 
+# A question asked before does not need the model again: its vector is kept (by a hash of the question,
+# never its words) in .index/query_cache.db. A hit answers in a fraction of a second and loads nothing.
+QUERY_CACHE = INDEX_DIR / "query_cache.db"
+QUERY_CACHE_MAX = 2000
+
+
+def _query_key(text: str) -> str:
+    return hashlib.sha256((MODEL_ID + "\x1f" + CFG["prefixes"]["query"] + " ".join(text.split())).encode("utf-8")).hexdigest()
+
+
+def embed_query_cached(text: str):
+    """The question's vector, from the cache when it was asked before. BRAIN_EMBED_NO_CACHE=1 turns it off."""
+    import numpy as np
+    if os.environ.get("BRAIN_EMBED_NO_CACHE") == "1":
+        return embed_query(text)
+    key = _query_key(text)
+    con = None
+    try:
+        con = sqlite3.connect(str(QUERY_CACHE), timeout=5)
+        con.execute("CREATE TABLE IF NOT EXISTS qv (key TEXT PRIMARY KEY, vec BLOB NOT NULL, used REAL NOT NULL)")
+        row = con.execute("SELECT vec FROM qv WHERE key = ?", (key,)).fetchone()
+        if row and len(row[0]) == DIM * 4:
+            con.execute("UPDATE qv SET used = ? WHERE key = ?", (time.time(), key))
+            con.commit()
+            return np.frombuffer(row[0], dtype="<f4").astype(np.float32)
+    except sqlite3.Error:
+        con = None                       # the cache is a convenience: without it the model answers
+    vec = embed_query(text)
+    if con is not None:
+        try:
+            con.execute("INSERT OR REPLACE INTO qv (key, vec, used) VALUES (?,?,?)",
+                        (key, np.asarray(vec, dtype="<f4").tobytes(), time.time()))
+            con.execute("DELETE FROM qv WHERE key NOT IN (SELECT key FROM qv ORDER BY used DESC LIMIT ?)",
+                        (QUERY_CACHE_MAX,))
+            con.commit()
+        except sqlite3.Error:
+            pass
+    return vec
+
+
 def pack(vec) -> tuple[bytes, bytes]:
     """(bin, full) blobs for one unit vector."""
     import numpy as np
@@ -574,7 +614,7 @@ def _popcount_table():
 def _search_impl(index_db_path: str, query: str, k: int = 20, exact: bool = False,
                  shortlist: int = 300) -> list[dict]:
     import numpy as np
-    qv = embed_query(query)
+    qv = embed_query_cached(query)
     vdb = _open_vectors()
     n = vdb.execute("SELECT count(*) FROM vectors").fetchone()[0]
     if n == 0:

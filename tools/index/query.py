@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Query the vault catalog (.index/vault_index.db). Read-only. Stdlib only.
 
-  query.py [--json] [--limit N] [--entity E] [--area A] [--tier T] [--all] [--no-embed] TERMS
-      Full-text search of files. Tier `archive` is hidden unless --all or --tier archive is given.
-      If tools/index/embed/embed.py exposes search(index_db_path, query, k), its hits are fused with the full-text
-      ranks (reciprocal rank fusion, k=60). If it does not, or returns nothing, the result is full-text only.
+  query.py [--json] [--limit N] [--entity E] [--area A] [--tier T] [--all] [--no-embed] [--meaning] [--alpha X]
+           [--explain] TERMS
+      Hybrid search of files (tools/index/hybrid.py): keywords in the catalogue, keywords in the passages of
+      every embedded file, and meaning (tools/index/embed/embed.py, when installed), fused by weighted
+      reciprocal rank. Each hit carries `why` (which signal found it, at which place) and `confidence`
+      (strong, fair, weak). Tier `archive` is hidden unless --all or --tier archive is given.
+      --alpha X     weight of meaning against keywords, 0 to 1; chosen from the question when left out
+      --no-embed    keywords only        --meaning    ask the model even when the exact text was found
+      --explain     with --json: an object {question, kind, alpha, mode, verdict, results} instead of a list
   query.py --records [--json] [--limit N] kind=invoice status=open company=DE due_before=2030-12-01 [WORDS]
       Records (the `records` table, filled by the importers). Amounts are shown as written, never summed.
       Keys: kind, company, status, ref, currency, certainty, client (comma lists allowed: kind=invoice,expense);
@@ -29,6 +34,10 @@ sys.dont_write_bytecode = True  # no __pycache__ in the vault
 
 TOKEN = re.compile(r"[^\s\"']+")
 HERE = Path(__file__).resolve().parent
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import hybrid  # noqa: E402
+
 EMBED_FILE = HERE / "embed" / "embed.py"
 RRF_K = 60
 TIERS = ("current", "month", "year", "archive")
@@ -123,85 +132,37 @@ def _ext_cols(conn: sqlite3.Connection) -> str:
     return "f.area, f.tier" if "area" in table_columns(conn, "files") else "NULL AS area, NULL AS tier"
 
 
-def fuse(conn, fts: list[dict], vec_paths: list[str], frag: str, fparams: list, limit: int, ext: str) -> list[dict]:
-    """Reciprocal rank fusion of the full-text list and the embedding list. Exact name/path hits stay first."""
-    score: dict[str, float] = {}
-    rows: dict[str, dict] = {}
-    for i, r in enumerate(fts):
-        score[r["path"]] = score.get(r["path"], 0.0) + 1.0 / (RRF_K + i + 1)
-        rows[r["path"]] = r
-    for i, p in enumerate(vec_paths):
-        score[p] = score.get(p, 0.0) + 1.0 / (RRF_K + i + 1)
-        if p not in rows:
-            row = conn.execute(
-                f"SELECT f.path, f.name, f.entity, f.kind, f.year_month, f.purpose, f.certainty, f.size, {ext}, "
-                f"NULL AS snippet, NULL AS rank FROM files f WHERE f.path = ?{frag}",
-                [p] + fparams,
-            ).fetchone()
-            if row:
-                rows[p] = dict(row)
-    order = sorted((p for p in score if p in rows),
-                   key=lambda p: (0 if rows[p].get("rank") == -1e9 else 1, -score[p]))
-    out = []
-    for p in order[:limit]:
-        r = rows[p]
-        r["score"] = round(score[p], 5)
-        out.append(r)
-    return out
+def run_search(conn: sqlite3.Connection, db: Path | None, q: str, limit: int, entity: str | None = None,
+               area: str | None = None, tier: str | None = None, include_all: bool = False,
+               vec_paths: list | None = None, alpha: float | None = None, meaning: str = "auto"
+               ) -> tuple[list[dict], dict]:
+    """The hybrid search with this catalogue's filters. -> (rows, info)"""
+    if not q.strip():
+        sys.exit("empty query")
+    frag, fparams = file_filter(conn, entity, area, tier, include_all)
+    ext = _ext_cols(conn)
+    rows, info = hybrid.search(conn, db, q, limit, frag, fparams, ext, alpha=alpha, meaning=meaning,
+                               vec_hits=vec_paths, embed_file=EMBED_FILE)
+    if not include_all and not tier and info.get("verdict") != "found" and "tier" in table_columns(conn, "files"):
+        # nothing good in the current material: say whether the archive holds the words
+        afrag, aparams = file_filter(conn, entity, area, "archive", False)
+        arch, _ = hybrid.search(conn, db, q, 5, afrag, aparams, ext, meaning="off")
+        n = sum(1 for r in arch if r["confidence"] != "weak")
+        if n:
+            info["hint"] = f"{n} archived file(s) match: add --all to see them"
+    return rows, info
 
 
 def cmd_search(conn: sqlite3.Connection, q: str, limit: int, entity: str | None = None, area: str | None = None,
                tier: str | None = None, include_all: bool = False, vec_paths: list[str] | None = None) -> list[dict]:
-    match = fts_query(q)
-    if not match:
-        sys.exit("empty query")
-    frag, fparams = file_filter(conn, entity, area, tier, include_all)
-    ext = _ext_cols(conn)
-    exact_sql = (f"SELECT f.path, f.name, f.entity, f.kind, f.year_month, f.purpose, f.certainty, "
-                 f"f.size, {ext}, NULL AS snippet, -1e9 AS rank FROM files f WHERE (f.name = ? OR f.path = ?)") + frag
-    exact = [dict(r) for r in conn.execute(exact_sql, [q.strip(), q.strip()] + fparams)]
-    sql = (f"SELECT f.path, f.name, f.entity, f.kind, f.year_month, f.purpose, f.certainty, f.size, {ext}, "
-           "snippet(files_fts, 3, '[', ']', '…', 12) AS snippet, rank "
-           "FROM files_fts JOIN files f ON f.path = files_fts.path WHERE files_fts MATCH ?") + frag \
-        + " ORDER BY rank LIMIT ?"
-    try:
-        rows = conn.execute(sql, [match] + fparams + [limit]).fetchall()
-    except sqlite3.OperationalError:
-        rows = conn.execute(sql, [q] + fparams + [limit]).fetchall()
-    seen = {r["path"] for r in exact}
-    merged = exact + [dict(r) for r in rows if r["path"] not in seen]
-    if vec_paths:
-        return fuse(conn, merged, vec_paths, frag, fparams, limit, ext)
-    return merged[:limit]
+    """Keywords from the catalogue, fused with a ready meaning list when one is given. No model, no passages."""
+    return run_search(conn, None, q, limit, entity, area, tier, include_all, vec_paths, meaning="off")[0]
 
 
 def embed_paths(db: Path, q: str, k: int) -> list[str] | None:
-    """Hits from tools/index/embed/embed.py search(index_db_path, query, k), or None when that module is absent."""
-    if not EMBED_FILE.is_file():
-        return None
-    try:
-        spec = importlib.util.spec_from_file_location("_index_embed_query", EMBED_FILE)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        fn = getattr(mod, "search", None)
-        if not callable(fn):
-            return None
-        hits = fn(str(db), q, k) or []
-    except Exception as e:  # noqa: BLE001 - full-text search still works without the embedder
-        if os.environ.get("INDEX_DEBUG"):
-            print(f"embedding search skipped: {type(e).__name__}: {e}", file=sys.stderr)
-        return None
-    out = []
-    for h in hits:
-        if isinstance(h, dict):
-            p = h.get("path")
-        elif isinstance(h, (list, tuple)):
-            p = h[0] if h else None
-        else:
-            p = h
-        if p:
-            out.append(str(p))
-    return out
+    """Paths from the meaning search, or None when it is not installed or failed."""
+    hits, _note = hybrid.meaning_hits(db, q, k, EMBED_FILE)
+    return None if hits is None else [h["path"] for h in hits]
 
 
 def parse_record_filters(tokens: list[str]) -> tuple[list[tuple[str, str]], str]:
@@ -310,7 +271,10 @@ def main() -> None:
     ap.add_argument("--area", default=None, choices=AREAS)
     ap.add_argument("--tier", default=None, choices=TIERS)
     ap.add_argument("--all", action="store_true", help="include tier archive")
-    ap.add_argument("--no-embed", action="store_true", help="full-text only, even if an embedder exists")
+    ap.add_argument("--no-embed", action="store_true", help="keywords only, even if an embedder exists")
+    ap.add_argument("--meaning", action="store_true", help="ask the model even when the exact text was found")
+    ap.add_argument("--alpha", type=float, default=None, help="weight of meaning against keywords, 0 to 1")
+    ap.add_argument("--explain", action="store_true", help="with --json: an object with the verdict and the reasons")
     ap.add_argument("--records", action="store_true", help="search the records table (kind=... status=... ...)")
     ap.add_argument("--info", metavar="PATH", default=None)
     ap.add_argument("--stats", action="store_true")
@@ -371,19 +335,31 @@ def main() -> None:
         sys.exit("usage: query.py [--json] [--entity DE] [--area A] [--tier T] [--all] SEARCH\n"
                  "       query.py --records kind=... status=... company=... due_before=...\n"
                  "       query.py --info PATH\n       query.py --stats")
-    vec = None if args.no_embed else embed_paths(db, q, max(args.limit * 3, 30))
-    rows = cmd_search(conn, q, args.limit, args.entity, args.area, args.tier, args.all, vec or None)
+    mode = "off" if args.no_embed else ("on" if args.meaning else "auto")
+    rows, info = run_search(conn, db, q, args.limit, args.entity, args.area, args.tier, args.all,
+                            alpha=args.alpha, meaning=mode)
     stamp(root, "search", q)
     if args.json:
-        print(json.dumps(rows, ensure_ascii=False, indent=2, default=str))
+        payload = dict(info, results=rows) if args.explain else rows
+        print(json.dumps(payload, ensure_ascii=False, indent=2, default=str))
+        if not args.explain:
+            for note in (info.get("verdict") if info.get("verdict") != "found" else None, info.get("hint")):
+                if note:
+                    print(f"search: {note}", file=sys.stderr)
         return
+    kinds = {"exact": "exact lookup", "short": "short lookup", "question": "plain question"}
+    print(f"search: {info.get('mode', 'keywords only')} · {kinds.get(info['kind'], info['kind'])}, alpha {info['alpha']:.2f} · "
+          f"meaning {info.get('meaning', 'off')} · {info.get('seconds', 0)} s")
     if not rows:
-        print("no hits")
+        print("no hits" + (f" ({info['hint']})" if info.get("hint") else ""))
         return
+    if info.get("verdict") != "found":
+        print(f"NOTE: {info['verdict']}")
+    if info.get("hint"):
+        print(f"NOTE: {info['hint']}")
     for r in rows:
         print(f"{r['path']}")
-        if r.get("area") or r.get("tier"):
-            print(f"  area={r.get('area') or '-'} tier={r.get('tier') or '-'}")
+        print(f"  {r['confidence']} · {r['why']} · area={r.get('area') or '-'} tier={r.get('tier') or '-'}")
         if r.get("purpose"):
             print(f"  {r['purpose']}")
         if r.get("snippet"):

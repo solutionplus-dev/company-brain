@@ -514,6 +514,14 @@ def post_steps(db_path: Path, importer_file: Path | None = None, embed_file: Pat
             out[key] = None if val is None else int(val)
         except Exception as e:  # noqa: BLE001 - a failed step is recorded in runs.errors
             out["errors"].append(f"{label}: {type(e).__name__}: {e}")
+    # keyword index over the passages (hybrid.py): rebuilt only when the passages changed
+    try:
+        import hybrid
+        res = hybrid.ensure_passages(hybrid.vectors_db_for(db_path))
+        if res.get("rebuilt"):
+            out["notes"].append(f"passages: keyword index rebuilt ({res['passages']})")
+    except Exception as e:  # noqa: BLE001
+        out["errors"].append(f"passages: {type(e).__name__}: {e}")
     return out
 
 

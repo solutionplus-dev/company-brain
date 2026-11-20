@@ -29,6 +29,7 @@ Anything you do not connect is reported as "not read" every day. That is by desi
 python3 tools/index/refresh.py --full
 scripts/brain status
 python3 tests/test_smoke.py
+python3 tests/test_hybrid.py
 ```
 
 ## 5. Schedule the two routines
@@ -42,7 +43,7 @@ Run the daily one by hand first and read the result with the routine file beside
 
 ## 6. The first week
 
-Expect many "not read" and `unknown` answers. Each is a to-do for you (connect a source, find a document), and the weekly run will list them as improvement proposals. By the second Monday the answer sheet should be mostly Yes and No.
+Expect many "not read" and `unknown` answers. Each is a to-do for you (connect a source, find a document), and Sunday's block of the daily run will list them as improvement proposals. By the second Monday the answer sheet should be mostly Yes and No.
 
 ## 7. Optional
 

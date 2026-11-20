@@ -32,4 +32,4 @@ One folder per client, named by its slug. `CLIENTS.json` is the register; `WATCH
 
 ## Routines that touch it
 
-Daily items 4 and 16; weekly Part A item 4, Part C item 12.
+Daily items 4 and 16; weekly Part A item 4; Wednesday's and Thursday's block of the daily run (`00_Brain/SCHEDULES/daily.md` Step 3b: the stalest `STATUS.md` refreshed, long ones trimmed with history kept).
